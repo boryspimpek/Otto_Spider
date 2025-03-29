@@ -29,7 +29,7 @@ void setServo(uint8_t ch, float angle) {
 }
 
 void moveServos(int totalTime, float target[8]) {
-  const int steps = 30;
+  const int steps = 20;
   int delayTime = totalTime / steps;
 
   for (int j = 0; j <= steps; j++) {
@@ -61,35 +61,46 @@ void playMotion(int steps, int T, int amplitude[8], int offset[8], int phase[8],
   }
 }
 
-void goToWalkPosition(int transitionTime) {
-  float startAngles[8];
+void stand(int transitionTime) {
+  const int steps = 20;
+  int delayTime = transitionTime / steps;
+  float current[8];
 
-  float amplitude[8] = {15, 15, 20, 20, 15, 15, 20, 20};
-  float offset[8]    = {98, 82, 80, 100, 58, 122, 100, 80};
-  float phaseDeg[8]  = {90, 90, 270, 90, 270, 270, 90, 270};
-
+  // Pobierz aktualną pozycję każdego serwa z currentAngle (nie oscylatora!)
   for (int i = 0; i < 8; i++) {
-    float phaseRad = phaseDeg[i] * PI / 180.0;
-    startAngles[i] = amplitude[i] * sin(phaseRad) + offset[i];
+    current[i] = currentAngle[i];
   }
 
-  moveServos(transitionTime, startAngles);
+  // Docelowe pozycje: offsety
+  float offset[8] = {
+    98,  // serwo 0
+    82,  // serwo 1
+    60,  // serwo 2
+    120, // serwo 3
+    58,  // serwo 4
+    122, // serwo 5
+    120, // serwo 6
+    60   // serwo 7
+  };
+
+  for (int j = 0; j <= steps; j++) {
+    for (int i = 0; i < 8; i++) {
+      float angle = current[i] + (offset[i] - current[i]) * j / steps;
+      setServo(i, angle);
+    }
+    delay(delayTime);
+  }
 }
 
 void walkForward(int steps, int T) {
-  goToWalkPosition(500);
+  //goToWalkPosition(500);
   float x_amp = 15;
   float z_amp = 20;
   float ap = 20;
   float hi = 10;
   float front_x = 12;
 
-  float offset[8] = {
-    90 + ap - front_x, 90 - ap + front_x,
-    90 - hi, 90 + hi,
-    90 - ap - front_x, 90 + ap + front_x,
-    90 + hi, 90 - hi
-  };
+  float offset[8] = {90 + ap - front_x, 90 - ap + front_x, 90 - hi, 90 + hi, 90 - ap - front_x, 90 + ap + front_x, 90 + hi, 90 - hi};
   float phase[8] = {90, 90, 270, 90, 270, 270, 90, 270};
   int period[8] = {T, T, T/2, T/2, T, T, T/2, T/2};
   float amp[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
@@ -292,20 +303,5 @@ void home() {
 
   for (int i = 0; i < 8; i++) {
     setServo(i, position[i]);
-  }
-}
-
-void standStill() {
-  const int steps = 20;
-  const int delayTime = 15;
-  float current[8];
-  for (int i = 0; i < 8; i++) current[i] = osc[i].refresh();
-
-  for (int j = 0; j <= steps; j++) {
-    for (int i = 0; i < 8; i++) {
-      float angle = current[i] + (90 - current[i]) * j / steps;
-      setServo(i, angle);
-    }
-    delay(delayTime);
   }
 }

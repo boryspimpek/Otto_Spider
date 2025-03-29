@@ -17,17 +17,12 @@ void setup() {
   }
 
   delay(1000);
+  stand(500);
+  delay(1000);
 }
 
 void loop() {
-  standStill();
+  walkForward(5, 1000);
+  stand(100);
   delay(3000);
-  walkForward(5, 1000);
-  turnL(5, 1000);
-  walkForward(5, 1000);
-  turnR(5, 1000);
-  delay(2000);
-  hello();
-  delay(2000);
-  
 }
