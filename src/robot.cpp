@@ -41,7 +41,49 @@ void moveServos(int totalTime, float target[8]) {
   }
 }
 
-void configureGait(int T, float x_amp, float z_amp, float ap, float hi, float front_x) {
+void playMotion(int steps, int T, int amplitude[8], int offset[8], int phase[8], int period[8]) {
+  for (int i = 0; i < 8; i++) {
+    osc[i].reset();
+    osc[i].setPeriod(period[i]);
+    osc[i].setAmplitude(amplitude[i]);
+    osc[i].setOffset(offset[i]);
+    osc[i].setPhase(phase[i]);
+  }
+
+  unsigned long start = millis();
+  unsigned long duration = (unsigned long)(T * steps);
+
+  while ((millis() - start) < duration) {
+    for (int i = 0; i < 8; i++) {
+      setServo(i, osc[i].refresh());
+    }
+    delay(1);
+  }
+}
+
+void goToWalkPosition(int transitionTime) {
+  float startAngles[8];
+
+  float amplitude[8] = {15, 15, 20, 20, 15, 15, 20, 20};
+  float offset[8]    = {98, 82, 80, 100, 58, 122, 100, 80};
+  float phaseDeg[8]  = {90, 90, 270, 90, 270, 270, 90, 270};
+
+  for (int i = 0; i < 8; i++) {
+    float phaseRad = phaseDeg[i] * PI / 180.0;
+    startAngles[i] = amplitude[i] * sin(phaseRad) + offset[i];
+  }
+
+  moveServos(transitionTime, startAngles);
+}
+
+void walkForward(int steps, int T) {
+  goToWalkPosition(500);
+  float x_amp = 15;
+  float z_amp = 20;
+  float ap = 20;
+  float hi = 10;
+  float front_x = 12;
+
   float offset[8] = {
     90 + ap - front_x, 90 - ap + front_x,
     90 - hi, 90 + hi,
@@ -59,35 +101,21 @@ void configureGait(int T, float x_amp, float z_amp, float ap, float hi, float fr
     osc[i].setPhase(phase[i]);
     osc[i].setOffset(offset[i]);
   }
-}
 
-void transitionToWalkForward(int T) {
-  configureGait(T, 15, 20, 20, 10, 12);
-  float target[8];
-  for (int i = 0; i < 8; i++) target[i] = osc[i].refresh();
-
-  const int steps = 30;
-  const int delayTime = 15;
-  for (int j = 0; j <= steps; j++) {
-    for (int i = 0; i < 8; i++) {
-      float angle = currentAngle[i] + (target[i] - currentAngle[i]) * j / steps;
-      setServo(i, angle);
-    }
-    delay(delayTime);
-  }
-}
-
-void walkForward(int steps, int T) {
-  configureGait(T, 15, 20, 20, 10, 12);
+  // Ruch
   unsigned long start = millis();
   unsigned long duration = (unsigned long)(T * steps);
 
   while ((millis() - start) < duration) {
     int side = ((millis() - start) / (T / 2)) % 2;
+
+    // Przód-tył nogi (ciągle)
     setServo(0, osc[0].refresh());
     setServo(1, osc[1].refresh());
     setServo(4, osc[4].refresh());
     setServo(5, osc[5].refresh());
+
+    // Góra-dół nogi (na zmianę)
     if (side == 0) {
       setServo(3, osc[3].refresh());
       setServo(6, osc[6].refresh());
@@ -95,6 +123,7 @@ void walkForward(int steps, int T) {
       setServo(2, osc[2].refresh());
       setServo(7, osc[7].refresh());
     }
+
     delay(1);
   }
 }
@@ -105,33 +134,12 @@ void turnR(int steps, int T) {
   int ap = 15;
   int hi = 23;
 
-  float offset[8] = {
-    90.0f + ap, 90.0f - ap, 90.0f - hi, 90.0f + hi,
-    90.0f - ap, 90.0f + ap, 90.0f + hi, 90.0f - hi
-  
-  };
-  float phase[8] = {0.0f, 180.0f, 90.0f, 90.0f, 180.0f, 0.0f, 90.0f, 90.0f};
+  int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+  int phase[8] = {0, 180, 90, 90, 180, 0, 90, 90};
   int period[8] = {T, T, T, T, T, T, T, T};
-  float amp[8] = {(float)x_amp, (float)x_amp, (float)z_amp, (float)z_amp,
-    (float)x_amp, (float)x_amp, (float)z_amp, (float)z_amp};
+  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
 
-  for (int i = 0; i < 8; i++) {
-    osc[i].reset();
-    osc[i].setPeriod(period[i]);
-    osc[i].setAmplitude(amp[i]);
-    osc[i].setPhase(phase[i]);
-    osc[i].setOffset(offset[i]);
-  }
-
-  unsigned long start = millis();
-  unsigned long duration = (unsigned long)(T * steps);
-
-  while ((millis() - start) < duration) {
-    for (int i = 0; i < 8; i++) {
-      setServo(i, osc[i].refresh());
-    }
-    delay(1);
-  }
+  playMotion(steps, T, amplitude, offset, phase, period);
 }
 
 void turnL(int steps, int T) {
@@ -140,48 +148,24 @@ void turnL(int steps, int T) {
   int ap = 15;
   int hi = 23;
 
-  float offset[8] = {
-    90.0f + ap, 90.0f - ap, 90.0f - hi, 90.0f + hi,
-    90.0f - ap, 90.0f + ap, 90.0f + hi, 90.0f - hi
-  };
-
-  float phase[8] = {180.0f, 0.0f, 90.0f, 90.0f, 0.0f, 180.0f, 90.0f, 90.0f};
+  int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+  int phase[8] = {180, 0, 90, 90, 0, 180, 90, 90};
   int period[8] = {T, T, T, T, T, T, T, T};
-  float amp[8] = {
-    (float)x_amp, (float)x_amp, (float)z_amp, (float)z_amp,
-    (float)x_amp, (float)x_amp, (float)z_amp, (float)z_amp
-  };
+  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
 
-  for (int i = 0; i < 8; i++) {
-    osc[i].reset();
-    osc[i].setPeriod(period[i]);
-    osc[i].setAmplitude(amp[i]);
-    osc[i].setPhase(phase[i]);
-    osc[i].setOffset(offset[i]);
-  }
-
-  unsigned long start = millis();
-  unsigned long duration = (unsigned long)(T * steps);
-
-  while ((millis() - start) < duration) {
-    for (int i = 0; i < 8; i++) {
-      setServo(i, osc[i].refresh());
-    }
-    delay(1);
-  }
+  playMotion(steps, T, amplitude, offset, phase, period);
 }
 
 void hello() {
-  float helloPose[8] = {90.0f + 15, 90.0f - 15, 90.0f - 65, 90.0f + 65, 90.0f + 20, 90.0f - 20, 90.0f + 10, 90.0f - 10};
+  float helloPose[8] = {90 + 15, 90 - 15, 90 - 65, 90 + 65, 90 + 20, 90 - 20, 90 + 10, 90 - 10};
   moveServos(500, helloPose);
   delay(200);
 
   int T = 350;
   int period[8] = {T, T, T, T, T, T, T, T};
-
-  float amplitude[8] = {0.0f, 50.0f, 0.0f, 50.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-  float offset[8]    = {90.0f + 15, 40.0f, 90.0f - 65, 90.0f, 90.0f + 20, 90.0f - 20, 90.0f + 10, 90.0f - 10};
-  float phase[8]     = {0.0f, 0.0f, 0.0f, 90.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  int amplitude[8] = {0, 50, 0, 50, 0, 0, 0, 0};
+  int offset[8]    = {90 + 15, 40, 90 - 65, 90, 90 + 20, 90 - 20, 90 + 10, 90 - 10};
+  int phase[8]     = {0, 0, 0, 90, 0, 0, 0, 0};
 
   for (int i = 0; i < 8; i++) {
     osc[i].reset();
@@ -201,7 +185,7 @@ void hello() {
     delay(1);
   }
 
-  float endPose[8] = {160.0f, 20.0f, 90.0f, 90.0f, 90.0f - 20, 90.0f + 20, 90.0f + 10, 90.0f - 10};
+  float endPose[8] = {160, 20, 90, 90, 90 - 20, 90 + 20, 90 + 10, 90 - 10};
   moveServos(500, endPose);
   delay(200);
 }
@@ -211,26 +195,10 @@ void moonwalkL(int steps, int T) {
 
   int period[8] = {T, T, T, T, T, T, T, T};
   int amplitude[8] = {0, 0, z_amp, z_amp, 0, 0, z_amp, z_amp};
-  float offset[8] = {90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f};
-  float phase[8] = {0.0f, 0.0f, 0.0f, 120.0f, 0.0f, 0.0f, 180.0f, 290.0f};
+  int offset[8] = {90, 90, 90, 90, 90, 90, 90, 90};
+  int phase[8] = {0, 0, 0, 120, 0, 0, 180, 290};
 
-  for (int i = 0; i < 8; i++) {
-    osc[i].reset();
-    osc[i].setPeriod((int)period[i]);
-    osc[i].setAmplitude(amplitude[i]);
-    osc[i].setOffset(offset[i]);
-    osc[i].setPhase(phase[i]);
-  }
-
-  unsigned long start = millis();
-  unsigned long duration = (unsigned long)(T * steps);
-
-  while ((millis() - start) < duration) {
-    for (int i = 0; i < 8; i++) {
-      setServo(i, osc[i].refresh());
-    }
-    delay(1);
-  }
+  playMotion(steps, T, amplitude, offset, phase, period);
 }
 
 void run(int steps, int T) {
@@ -240,44 +208,12 @@ void run(int steps, int T) {
   int hi = 15;
   int front_x = 6;
 
-  float period[8];
-  for (int i = 0; i < 8; i++) period[i] = (float)T;
+  int period[8] = {T, T, T, T, T, T, T, T};
+  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+  int offset[8] = {90 + ap - front_x, 90 - ap + front_x, 90 - hi, 90 + hi, 90 - ap - front_x, 90 + ap + front_x, 90 + hi, 90 - hi};
+  int phase[8] = {0, 0, 90, 90, 180, 180, 90, 90};
 
-  float amplitude[8] = {
-    (float)x_amp, (float)x_amp, (float)z_amp, (float)z_amp,
-    (float)x_amp, (float)x_amp, (float)z_amp, (float)z_amp
-  };
-
-  float offset[8] = {
-    90.0f + ap - front_x,
-    90.0f - ap + front_x,
-    90.0f - hi,
-    90.0f + hi,
-    90.0f - ap - front_x,
-    90.0f + ap + front_x,
-    90.0f + hi,
-    90.0f - hi
-  };
-
-  float phase[8] = {0.0f, 0.0f, 90.0f, 90.0f, 180.0f, 180.0f, 90.0f, 90.0f};
-
-  for (int i = 0; i < 8; i++) {
-    osc[i].reset();
-    osc[i].setPeriod((int)period[i]);
-    osc[i].setAmplitude(amplitude[i]);
-    osc[i].setOffset(offset[i]);
-    osc[i].setPhase(phase[i]);
-  }
-
-  unsigned long start = millis();
-  unsigned long duration = (unsigned long)(T * steps);
-
-  while ((millis() - start) < duration) {
-    for (int i = 0; i < 8; i++) {
-      setServo(i, osc[i].refresh());
-    }
-    delay(1);
-  }
+  playMotion(steps, T, amplitude, offset, phase, period);
 }
 
 void dance(int steps, int T) {
@@ -286,40 +222,12 @@ void dance(int steps, int T) {
   int ap = 30;
   int hi = 20;
 
-  float period[8];
-  for (int i = 0; i < 8; i++) period[i] = (float)T;
+  int period[8] = {T, T, T, T, T, T, T, T};
+  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+  int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+  int phase[8] = {0, 0, 0, 270, 0, 0, 90, 180};
 
-  float amplitude[8] = {
-    (float)x_amp, (float)x_amp, (float)z_amp, (float)z_amp,
-    (float)x_amp, (float)x_amp, (float)z_amp, (float)z_amp
-  };
-
-  float offset[8] = {
-    90.0f + ap, 90.0f - ap,
-    90.0f - hi, 90.0f + hi,
-    90.0f - ap, 90.0f + ap,
-    90.0f + hi, 90.0f - hi
-  };
-
-  float phase[8] = {0.0f, 0.0f, 0.0f, 270.0f, 0.0f, 0.0f, 90.0f, 180.0f};
-
-  for (int i = 0; i < 8; i++) {
-    osc[i].reset();
-    osc[i].setPeriod((int)period[i]);
-    osc[i].setAmplitude(amplitude[i]);
-    osc[i].setOffset(offset[i]);
-    osc[i].setPhase(phase[i]);
-  }
-
-  unsigned long start = millis();
-  unsigned long duration = (unsigned long)(T * steps);
-
-  while ((millis() - start) < duration) {
-    for (int i = 0; i < 8; i++) {
-      setServo(i, osc[i].refresh());
-    }
-    delay(1);
-  }
+  playMotion(steps, T, amplitude, offset, phase, period);
 }
 
 void frontBack(int steps, int T) {
@@ -328,45 +236,12 @@ void frontBack(int steps, int T) {
   int ap = 20;
   int hi = 30;
 
-  float period[8]; 
-  for (int i = 0; i < 8; i++) period[i] = (float)T;
+  int period[8] = {T, T, T, T, T, T, T, T};
+  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+  int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+  int phase[8] = {0, 180, 270, 90, 0, 180, 90, 270};
 
-  float amplitude[8] = {
-    (float)x_amp, (float)x_amp,
-    (float)z_amp, (float)z_amp,
-    (float)x_amp, (float)x_amp,
-    (float)z_amp, (float)z_amp
-  };
-
-  float offset[8] = {
-    90.0f + ap, 90.0f - ap,
-    90.0f - hi, 90.0f + hi,
-    90.0f - ap, 90.0f + ap,
-    90.0f + hi, 90.0f - hi
-  };
-
-  float phase[8] = {
-    0.0f, 180.0f, 270.0f, 90.0f,
-    0.0f, 180.0f, 90.0f, 270.0f
-  };
-
-  for (int i = 0; i < 8; i++) {
-    osc[i].reset();
-    osc[i].setPeriod((int)period[i]);
-    osc[i].setAmplitude(amplitude[i]);
-    osc[i].setOffset(offset[i]);
-    osc[i].setPhase(phase[i]);
-  }
-
-  unsigned long start = millis();
-  unsigned long duration = (unsigned long)(T * steps);
-
-  while ((millis() - start) < duration) {
-    for (int i = 0; i < 8; i++) {
-      setServo(i, osc[i].refresh());
-    }
-    delay(1);
-  }
+  playMotion(steps, T, amplitude, offset, phase, period);
 }
 
 void upDown(int steps, int T) {
@@ -376,49 +251,12 @@ void upDown(int steps, int T) {
   int hi = 25;
   int front_x = 0;
 
-  float period[8];
-  for (int i = 0; i < 8; i++) period[i] = (float)T;
+  int period[8] = {T, T, T, T, T, T, T, T};
+  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+  int offset[8] = {90 + ap - front_x, 90 - ap + front_x, 90 - hi, 90 + hi, 90 - ap - front_x, 90 + ap + front_x, 90 + hi, 90 - hi};
+  int phase[8] = {0, 0, 90, 270, 180, 180, 270, 90};
 
-  float amplitude[8] = {
-    (float)x_amp, (float)x_amp,
-    (float)z_amp, (float)z_amp,
-    (float)x_amp, (float)x_amp,
-    (float)z_amp, (float)z_amp
-  };
-
-  float offset[8] = {
-    90.0f + ap - front_x,
-    90.0f - ap + front_x,
-    90.0f - hi,
-    90.0f + hi,
-    90.0f - ap - front_x,
-    90.0f + ap + front_x,
-    90.0f + hi,
-    90.0f - hi
-  };
-
-  float phase[8] = {
-    0.0f, 0.0f, 90.0f, 270.0f,
-    180.0f, 180.0f, 270.0f, 90.0f
-  };
-
-  for (int i = 0; i < 8; i++) {
-    osc[i].reset();
-    osc[i].setPeriod((int)period[i]);
-    osc[i].setAmplitude(amplitude[i]);
-    osc[i].setOffset(offset[i]);
-    osc[i].setPhase(phase[i]);
-  }
-
-  unsigned long start = millis();
-  unsigned long duration = (unsigned long)(T * steps);
-
-  while ((millis() - start) < duration) {
-    for (int i = 0; i < 8; i++) {
-      setServo(i, osc[i].refresh());
-    }
-    delay(1);
-  }
+  playMotion(steps, T, amplitude, offset, phase, period);
 }
 
 void pushUp(int steps, int T) {
@@ -426,51 +264,19 @@ void pushUp(int steps, int T) {
   int x_amp = 65;
   int hi = 30;
 
-  float period[8];
-  for (int i = 0; i < 8; i++) period[i] = (float)T;
+  int period[8] = {T, T, T, T, T, T, T, T};
+  int amplitude[8] = {0, 0, z_amp, z_amp, 0, 0, 0, 0};
+  int offset[8] = {90, 90, 90 - hi, 90 + hi, 90 - x_amp, 90 + x_amp, 90 + hi, 90 - hi};
+  int phase[8] = {0, 0, 0, 180, 0, 0, 0, 180};
 
-  float amplitude[8] = {0.0f, 0.0f, (float)z_amp, (float)z_amp, 0.0f, 0.0f, 0.0f, 0.0f};
-
-  float offset[8] = {90.0f, 90.0f, 90.0f - hi, 90.0f + hi, 90.0f - x_amp, 90.0f + x_amp, 90.0f + hi, 90.0f - hi};
-
-  float phase[8] = {0.0f, 0.0f, 0.0f, 180.0f, 0.0f, 0.0f, 0.0f, 180.0f};
-
-  for (int i = 0; i < 8; i++) {
-    osc[i].reset();
-    osc[i].setPeriod((int)period[i]);
-    osc[i].setAmplitude(amplitude[i]);
-    osc[i].setOffset(offset[i]);
-    osc[i].setPhase(phase[i]);
-  }
-
-  unsigned long start = millis();
-  unsigned long duration = (unsigned long)(T * steps);
-
-  while ((millis() - start) < duration) {
-    for (int i = 0; i < 8; i++) {
-      setServo(i, osc[i].refresh());
-    }
-    delay(1);
-  }
+  playMotion(steps, T, amplitude, offset, phase, period);
 }
 
 void jump() {
-  float jumpPose[8] = {
-    90.0f + 15, 90.0f - 15,
-    90.0f - 65, 90.0f + 65,
-    90.0f + 20, 90.0f - 20,
-    90.0f + 10, 90.0f - 10
-  };
-
-  float ap = 20.0f;
-  float hi = 35.0f;
-
-  float salto[8] = {
-    90.0f + ap, 90.0f - ap,
-    90.0f - hi, 90.0f + hi,
-    90.0f - ap * 3, 90.0f + ap * 3,
-    90.0f + hi, 90.0f - hi
-  };
+  float jumpPose[8] = {90 + 15, 90 - 15, 90 - 65, 90 + 65, 90 + 20, 90 - 20, 90 + 10, 90 - 10};
+  float ap = 20;
+  float hi = 35;
+  float salto[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap * 3, 90 + ap * 3, 90 + hi, 90 - hi};
 
   moveServos(150, jumpPose);
   delay(200);
@@ -480,14 +286,9 @@ void jump() {
 }
 
 void home() {
-  float ap = 20.0f;
-  float hi = 35.0f;
-  float position[8] = {
-    90.0f + ap, 90.0f - ap,
-    90.0f - hi, 90.0f + hi,
-    90.0f - ap, 90.0f + ap,
-    90.0f + hi, 90.0f - hi
-  };
+  float ap = 20;
+  float hi = 35;
+  float position[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
 
   for (int i = 0; i < 8; i++) {
     setServo(i, position[i]);

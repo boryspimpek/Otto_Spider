@@ -20,43 +20,14 @@ void setup() {
 }
 
 void loop() {
-  transitionToWalkForward(2000);
-  walkForward(5, 2000);
   standStill();
+  delay(3000);
+  walkForward(5, 1000);
+  turnL(5, 1000);
+  walkForward(5, 1000);
+  turnR(5, 1000);
   delay(2000);
-  turnR(5, 2000);
-  delay(2000);
-  standStill();
-  delay(2000);
-  //turnL(5, 2000);
-  //standStill();
-  //delay(2000);
   hello();
   delay(2000);
-  standStill();
-  delay(2000);
-  //run(2, 2000);
-  //delay(2000);
-  //standStill();
-  //delay(2000);
-  dance(5, 600);
-  delay(2000);
-  standStill();
-  delay(2000);
-  //frontBack(2, 600);
-  //delay(2000);
-  //standStill();
-  //delay(2000);
-  upDown(3, 600);
-  delay(2000);
-  standStill();
-  delay(2000);
-  pushUp(3, 600);
-  delay(2000);
-  standStill();
-  delay(2000);
-  //jump();
-  //delay(2000);
-  //standStill();
-  //delay(2000);
+  
 }

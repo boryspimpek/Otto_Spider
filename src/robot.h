@@ -32,8 +32,8 @@ extern Oscillator osc[8];
 
 void setServo(uint8_t ch, float angle);
 void moveServos(int totalTime, float target[8]);
-void configureGait(int T, float x_amp, float z_amp, float ap, float hi, float front_x);
-void transitionToWalkForward(int T = 2000);
+void playMotion(int steps, int T, int amplitude[8], int offset[8], int phase[8], int period[8]);
+void goToWalkPosition(int T = 2000);
 void walkForward(int steps, int T = 2000);
 void turnR(int steps, int T = 2000);
 void turnL(int steps, int T = 2000);
