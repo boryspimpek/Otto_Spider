@@ -46,3 +46,4 @@ void upDown(int steps, int T = 5000);
 void pushUp(int steps, int T = 600);
 void jump();
 void home();
+void walkForwardContinuous(int T);
