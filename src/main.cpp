@@ -22,7 +22,7 @@ void setup() {
 }
 
 void loop() {
-  walkForward(5, 1000);
+  walkForward(5, 500);
   stand(100);
   delay(3000);
 }

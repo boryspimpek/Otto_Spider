@@ -93,7 +93,6 @@ void stand(int transitionTime) {
 }
 
 void walkForward(int steps, int T) {
-  //goToWalkPosition(500);
   float x_amp = 15;
   float z_amp = 20;
   float ap = 20;
