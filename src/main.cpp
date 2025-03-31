@@ -3,7 +3,6 @@
 #include <ESP8266WiFi.h>
 #include "robot.h"
 
-// Definicja struktury dla wiadomości wysyłanej przez kontroler
 typedef struct struct_message {
     bool L1Pressed;
     bool L2Pressed;
@@ -19,14 +18,31 @@ typedef struct struct_message {
     int joy2_y;
 } struct_message;
 
-// Zmienna globalna przechowująca odebrane dane
-struct_message receivedCommand;  // Struktura do przechowywania danych z kontrolera
+struct_message receivedCommand;  
 
-// Funkcja do obsługi odbioru wiadomości ESP-NOW
+const int DEADZONE = 20;
+const int T = 500;
+
+bool walkActive = false;
+bool turnRightActive = false;
+bool turnLeftActive = false;
+
+bool wasR1Pressed = false;
+bool wasR2Pressed = false;
+bool wasR3Pressed = false;
+bool wasR4Pressed = false;
+
+bool wasL1Pressed = false;
+bool wasL2Pressed = false;
+bool wasL3Pressed = false;
+
+extern bool walkInitialized;
+extern bool turnRightInitialized;
+extern bool turnLeftInitialized;
+
 void onDataReceive(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
   memcpy(&receivedCommand, incomingData, sizeof(receivedCommand));
 
-  // Debugging: wypisz dane przychodzące
   Serial.println("Otrzymano dane:");
   Serial.printf("L1: %d, L2: %d, L3: %d, L4: %d\n", 
   receivedCommand.L1Pressed, receivedCommand.L2Pressed,
@@ -44,16 +60,13 @@ void setup() {
     Serial.begin(115200);
     WiFi.mode(WIFI_STA);  // ESP8266 w trybie Station
 
-    // Inicjalizacja ESP-NOW na ESP8266
     if (esp_now_init() != 0) {
         Serial.println("Błąd inicjalizacji ESP-NOW!");
         return;
     }
 
-    // Rejestracja funkcji odbierającej dane
     esp_now_register_recv_cb(onDataReceive);
 
-    // Konfiguracja serwomechanizmów i innych komponentów robota (bez zmian)
     pwm.begin();
     pwm.setPWMFreq(50);
     delay(500);
@@ -68,15 +81,104 @@ void setup() {
     }
 
     delay(1000);
-    stand(500);
+    stand(100);
     delay(1000);
 }
 
 void loop() {
-    // Obsługa przycisków (jeśli są wciśnięte)
-    if (receivedCommand.L1Pressed) {
-      walkForward(5, 500);  // Idź do przodu
+    // --- CHODZENIE DO PRZODU ---
+    if (receivedCommand.joy1_y > DEADZONE) {
+        walkForwardSteps(1, 500);
+        walkActive = true;
+    } else if (walkActive) {
+        //stand(100);
+        walkActive = false;
+        walkInitialized = false;
     }
 
-    delay(50);  // Opóźnienie dla responsywności
+    // --- OBRÓT W PRAWO ---
+    if (receivedCommand.joy1_x < -DEADZONE) {
+        turnRight(T);
+        turnRightActive = true;
+    } else if (turnRightActive) {
+        stand(100);
+        turnRightActive = false;
+        turnRightInitialized = false;
+    }
+
+    // --- OBRÓT W LEWO ---
+    if (receivedCommand.joy1_x > DEADZONE) {
+        turnLeft(T);
+        turnLeftActive = true;
+    } else if (turnLeftActive) {  // <-- tu był błąd
+        stand(100);
+        turnLeftActive = false;
+        turnLeftInitialized = false;
+    }
+
+    // --- PRZYCISK R1 ---
+    if (receivedCommand.R1Pressed) {
+        if (!wasR1Pressed) {
+          hello();
+          wasR1Pressed = true;
+        }
+      } else if (wasR1Pressed) {
+        stand(100);  
+        wasR1Pressed = false;
+      }
+
+    // --- PRZYCISK R2 ---
+    if (receivedCommand.R2Pressed) {
+        if (!wasR2Pressed) {
+          moonwalkL(3, 1000);
+          wasR2Pressed = true;
+        }
+    } else if (wasR2Pressed) {
+        stand(100);
+        wasR2Pressed = false;
+    }
+
+    // --- PRZYCISK R3 ---
+    if (receivedCommand.R3Pressed) {
+        if (!wasR3Pressed) {
+          dance(3, 1000);
+          wasR3Pressed = true;
+        }
+    } else if (wasR3Pressed) {
+        stand(100);
+        wasR3Pressed = false;
+    }
+
+    // --- PRZYCISK R4 ---
+    if (receivedCommand.R4Pressed) {
+        if (!wasR4Pressed) {
+          frontBack(3, 1000);
+          wasR4Pressed = true;
+        }
+    } else if (wasR4Pressed) {
+        stand(100);
+        wasR4Pressed = false;
+    }
+
+    // --- PRZYCISK L1 ---
+    if (receivedCommand.L1Pressed) {
+        if (!wasL1Pressed) {
+          upDown(3, 1000);
+          wasL1Pressed = true;
+        }
+    } else if (wasL1Pressed) {
+        stand(100);
+        wasL1Pressed = false;
+    }
+
+    // --- PRZYCISK L2 ---
+    if (receivedCommand.L2Pressed) {
+        if (!wasL2Pressed) {
+          pushUp(3, 1000);
+          wasL2Pressed = true;
+        }
+    } else if (wasL2Pressed) {
+        stand(100);
+        wasL2Pressed = false;
+    }
 }

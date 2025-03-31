@@ -20,6 +20,10 @@ float Oscillator::refresh() {
   return amplitude * sin(rad + phase) + offset;
 }
 
+bool walkInitialized = false;
+bool turnRightInitialized = false;
+bool turnLeftInitialized = false;
+
 void setServo(uint8_t ch, float angle) {
   angle += servoTrim[ch];
   angle = constrain(angle, 0, 180);
@@ -62,7 +66,7 @@ void playMotion(int steps, int T, int amplitude[8], int offset[8], int phase[8],
 }
 
 void stand(int transitionTime) {
-  const int steps = 20;
+  const int steps = 10;
   int delayTime = transitionTime / steps;
   float current[8];
 
@@ -92,7 +96,7 @@ void stand(int transitionTime) {
   }
 }
 
-void walkForward(int steps, int T) {
+void walkForwardSteps(int steps, int T) {
   float x_amp = 15;
   float z_amp = 20;
   float ap = 20;
@@ -138,42 +142,14 @@ void walkForward(int steps, int T) {
   }
 }
 
-void turnR(int steps, int T) {
-  int x_amp = 15;
-  int z_amp = 15;
-  int ap = 15;
-  int hi = 23;
-
-  int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
-  int phase[8] = {0, 180, 90, 90, 180, 0, 90, 90};
-  int period[8] = {T, T, T, T, T, T, T, T};
-  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
-
-  playMotion(steps, T, amplitude, offset, phase, period);
-}
-
-void turnL(int steps, int T) {
-  int x_amp = 15;
-  int z_amp = 15;
-  int ap = 15;
-  int hi = 23;
-
-  int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
-  int phase[8] = {180, 0, 90, 90, 0, 180, 90, 90};
-  int period[8] = {T, T, T, T, T, T, T, T};
-  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
-
-  playMotion(steps, T, amplitude, offset, phase, period);
-}
-
 void hello() {
   float helloPose[8] = {90 + 15, 90 - 15, 90 - 65, 90 + 65, 90 + 20, 90 - 20, 90 + 10, 90 - 10};
-  moveServos(500, helloPose);
+  moveServos(1000, helloPose);
   delay(200);
 
   int T = 350;
   int period[8] = {T, T, T, T, T, T, T, T};
-  int amplitude[8] = {0, 50, 0, 50, 0, 0, 0, 0};
+  int amplitude[8] = {0, 50, 0, 20, 0, 0, 0, 0};
   int offset[8]    = {90 + 15, 40, 90 - 65, 90, 90 + 20, 90 - 20, 90 + 10, 90 - 10};
   int phase[8]     = {0, 0, 0, 90, 0, 0, 0, 0};
 
@@ -196,7 +172,7 @@ void hello() {
   }
 
   float endPose[8] = {160, 20, 90, 90, 90 - 20, 90 + 20, 90 + 10, 90 - 10};
-  moveServos(500, endPose);
+  moveServos(1000, endPose);
   delay(200);
 }
 
@@ -271,7 +247,7 @@ void upDown(int steps, int T) {
 
 void pushUp(int steps, int T) {
   int z_amp = 40;
-  int x_amp = 65;
+  int x_amp = 45;
   int hi = 30;
 
   int period[8] = {T, T, T, T, T, T, T, T};
@@ -302,5 +278,102 @@ void home() {
 
   for (int i = 0; i < 8; i++) {
     setServo(i, position[i]);
+  }
+}
+
+void walkForward(int T) {
+  static unsigned long startTime;
+
+  if (!walkInitialized) {
+    float x_amp = 15;
+    float z_amp = 20;
+    float ap = 20;
+    float hi = 10;
+    float front_x = 12;
+
+    float offset[8] = {90 + ap - front_x, 90 - ap + front_x, 90 - hi, 90 + hi, 90 - ap - front_x, 90 + ap + front_x, 90 + hi, 90 - hi};
+    float phase[8] = {90, 90, 270, 90, 270, 270, 90, 270};
+    int period[8] = {T, T, T/2, T/2, T, T, T/2, T/2};
+    float amp[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+
+    for (int i = 0; i < 8; i++) {
+      osc[i].reset();
+      osc[i].setPeriod(period[i]);
+      osc[i].setAmplitude(amp[i]);
+      osc[i].setPhase(phase[i]);
+      osc[i].setOffset(offset[i]);
+    }
+
+    startTime = millis();
+    walkInitialized = true;
+  }
+
+  int side = ((millis() - startTime) / (T / 2)) % 2;
+
+  setServo(0, osc[0].refresh());
+  setServo(1, osc[1].refresh());
+  setServo(4, osc[4].refresh());
+  setServo(5, osc[5].refresh());
+
+  if (side == 0) {
+    setServo(3, osc[3].refresh());
+    setServo(6, osc[6].refresh());
+  } else {
+    setServo(2, osc[2].refresh());
+    setServo(7, osc[7].refresh());
+  }
+}
+
+void turnRight(int T) {
+  if (!turnRightInitialized) {
+    int x_amp = 15;
+    int z_amp = 15;
+    int ap = 15;
+    int hi = 23;
+
+    int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+    int phase[8] = {0, 180, 90, 90, 180, 0, 90, 90};
+    int period[8] = {T, T, T, T, T, T, T, T};
+    int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+
+    for (int i = 0; i < 8; i++) {
+      osc[i].reset();
+      osc[i].setPeriod(period[i]);
+      osc[i].setAmplitude(amplitude[i]);
+      osc[i].setOffset(offset[i]);
+      osc[i].setPhase(phase[i]);
+    }
+
+    turnRightInitialized = true;
+  }
+
+  for (int i = 0; i < 8; i++) {
+    setServo(i, osc[i].refresh());
+  }
+}
+
+void turnLeft(int T) {
+  if (!turnLeftInitialized) {
+    int x_amp = 15;
+    int z_amp = 15;
+    int ap = 15;
+    int hi = 23;
+
+    int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+    int phase[8] = {180, 0, 90, 90, 0, 180, 90, 90};
+    int period[8] = {T, T, T, T, T, T, T, T};
+    int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+
+    for (int i = 0; i < 8; i++) {
+      osc[i].reset();
+      osc[i].setPeriod(period[i]);
+      osc[i].setAmplitude(amplitude[i]);
+      osc[i].setOffset(offset[i]);
+      osc[i].setPhase(phase[i]);
+    }
+    turnLeftInitialized = true;
+  }
+  for (int i = 0; i < 8; i++) {
+    setServo(i, osc[i].refresh());
   }
 }
