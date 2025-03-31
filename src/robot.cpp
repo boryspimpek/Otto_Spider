@@ -142,6 +142,34 @@ void walkForwardSteps(int steps, int T) {
   }
 }
 
+void turnRightSteps(int steps, int T) {
+  int x_amp = 15;
+  int z_amp = 15;
+  int ap = 15;
+  int hi = 23;
+
+  int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+  int phase[8] = {0, 180, 90, 90, 180, 0, 90, 90};
+  int period[8] = {T, T, T, T, T, T, T, T};
+  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+
+  playMotion(steps, T, amplitude, offset, phase, period);
+}
+
+void turnLeftSteps(int steps, int T) {
+  int x_amp = 15;
+  int z_amp = 15;
+  int ap = 15;
+  int hi = 23;
+
+  int offset[8] = {90 + ap, 90 - ap, 90 - hi, 90 + hi, 90 - ap, 90 + ap, 90 + hi, 90 - hi};
+  int phase[8] = {180, 0, 90, 90, 0, 180, 90, 90};
+  int period[8] = {T, T, T, T, T, T, T, T};
+  int amplitude[8] = {x_amp, x_amp, z_amp, z_amp, x_amp, x_amp, z_amp, z_amp};
+
+  playMotion(steps, T, amplitude, offset, phase, period);
+}
+
 void hello() {
   float helloPose[8] = {90 + 15, 90 - 15, 90 - 65, 90 + 65, 90 + 20, 90 - 20, 90 + 10, 90 - 10};
   moveServos(1000, helloPose);
