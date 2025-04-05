@@ -119,7 +119,7 @@ void loop() {
     // --- PRZYCISK R1 ---
     if (receivedCommand.R1Pressed) {
         if (!wasR1Pressed) {
-          hello();
+            upDown(3, 1000);
           wasR1Pressed = true;
         }
       } else if (wasR1Pressed) {
@@ -160,25 +160,14 @@ void loop() {
         wasR4Pressed = false;
     }
 
-    // --- PRZYCISK L1 ---
-    if (receivedCommand.L1Pressed) {
-        if (!wasL1Pressed) {
-          upDown(3, 1000);
-          wasL1Pressed = true;
-        }
-    } else if (wasL1Pressed) {
-        stand(100);
-        wasL1Pressed = false;
-    }
-
-    // --- PRZYCISK L2 ---
-    if (receivedCommand.L2Pressed) {
-        if (!wasL2Pressed) {
+    // --- PRZYCISK L3 ---
+    if (receivedCommand.L3Pressed) {
+        if (!wasL3Pressed) {
           pushUp(3, 1000);
-          wasL2Pressed = true;
+          wasL3Pressed = true;
         }
-    } else if (wasL2Pressed) {
+    } else if (wasL3Pressed) {
         stand(100);
-        wasL2Pressed = false;
+        wasL3Pressed = false;
     }
 }
